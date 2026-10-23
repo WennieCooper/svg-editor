@@ -15,7 +15,11 @@ export class SvgWriter {
       const attributes = Object.entries(shape.getAttributes())
         .map(([name, value]) => `${name}="${this.encoder.attribute(value)}"`)
         .join(" ");
-      lines.push(`  <${shape.getType()} ${attributes}/>`);
+      const text = shape.getTextContent();
+      const tag = shape.getType();
+      lines.push(text === undefined
+        ? `  <${tag} ${attributes}/>`
+        : `  <${tag} ${attributes}>${this.encoder.text(text)}</${tag}>`);
     }
     lines.push("</svg>", "");
     return lines.join("\n");

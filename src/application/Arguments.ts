@@ -1,3 +1,5 @@
+import { NumberValue } from "../domain/NumberValue.js";
+
 export class Arguments {
   private readonly values: readonly string[];
 
@@ -20,16 +22,7 @@ export class Arguments {
   }
 
   number(index: number): number {
-    const token = this.text(index);
-    // Accept signed decimal/scientific notation, but not blank, hex or Infinity.
-    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(token)) {
-      throw new Error(`invalid number: ${token}`);
-    }
-    const value = Number(token);
-    if (!Number.isFinite(value)) {
-      throw new Error(`invalid number: ${token}`);
-    }
-    return value;
+    return NumberValue.parse(this.text(index));
   }
 
   optionalText(index: number): string | undefined {

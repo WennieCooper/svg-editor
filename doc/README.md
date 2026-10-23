@@ -35,9 +35,9 @@ MAIN --> INFRA
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
+- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
 - Composite（计划）：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作。
-- Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前仅注册 rect。
+- Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text；容器 g 待实现。
 - Memento（待验证）：优先评估快照式撤销，用空间换取结构操作的恢复可靠性。
 
 仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory，其他业务代码不按图形类型名分派。
@@ -100,6 +100,19 @@ MAIN --> INFRA
 - 使用 examples/rectangles.txt 通过真实 CLI 生成 examples/rectangles.svg。浏览器截图确认左侧红色矩形位于 (30,40)、尺寸 100×60，右侧蓝色矩形位于 (160,40)、尺寸 80×60，符合命令输入。临时 HTTP 服务仅用于验收，日常直接打开 SVG 文件即可。
 - 验证通过：npm run typecheck、npm test，累计 8 组测试；新增覆盖 XML 输出、缺省 fill、属性快照隔离、中文及带空格路径、覆盖旧文件、非法 XML 不破坏旧文件、临时文件清理、保存失败后默认路径及文档不变、init 路径重置与真实 CLI 保存。
 - 当前未实现 read、其他图形、容器、编辑和撤销重做。IO 后禁止撤销的规则将在历史模块实现，不能把当前 save 视为 Phase 1 全部完成。
+
+### 2026-10-23：五种叶子图形与基础编辑
+
+- 第三次提交已完成，本阶段开始时工作区干净。新增 Circle、Ellipse、Line、Text，内置叶子类型现为 rect/circle/ellipse/line/text；g 与 Composite 留到下一阶段。
+- 为避免每个图形重复实现几何校验，引入具有私有状态和行为的 Geometry 类：按各图形给定的几何属性、非负约束及坐标轴定义处理编辑。Shape 统一管理样式，具体图形通过类和多态描述自身，无按类型分派的编辑逻辑。
+- NumberValue 在领域层统一数字解析，application/Arguments 复用它，避免 create 与 set 接受不同格式。没有引入 domain 对 application 的依赖。
+- 新增 MoveCommand、ScaleCommand、SetCommand、ShowCommand。所有叶子支持公共样式与自身几何白名单，只有 Text 支持 text 属性；id、transform、font-size 等不在本阶段 set 白名单中。
+- 明确 scale 是关于原点的几何缩放：全部位置与尺寸同乘倍率，包含直线两端点；文字只缩放 x/y，字体尺寸与描边宽度不属于要求中的几何属性，保持不变。
+- 处理失败原子性时考虑了多坐标运算溢出：Geometry 先计算完整候选状态，校验有限性与尺寸约束，再整体替换。禁止逐个更新坐标后才检查后续值。
+- SVG 序列化通过 getTextContent 多态获取文字，输出为子文本并转义；未将文字误存为属性，序列化中无 switch(tag)。空文字也输出合法 text 元素。
+- 验证：npm test 累计 16 组检查通过，npm run typecheck 通过。新增覆盖五类移动与缩放、两端点、非正倍率、溢出回滚、属性白名单、负半径与尺寸、文字和空文字编辑、缺省样式、XML 内容转义。
+- 用真实 CLI 回放 examples/shapes.txt，生成 examples/shapes.svg；XML 解析确认五个元素。浏览器验收看到矩形、缩放后的圆、有描边的椭圆、直线和包含 & 的标题，未见 XML 错误或文字截断。
+- 仍未实现容器、in、分组、删除、z-order、canvas、历史及 read；这些功能按后续提交逐项推进。
 
 ## 一致性自查
 

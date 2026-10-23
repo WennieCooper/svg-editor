@@ -1,17 +1,57 @@
+import { Geometry } from "../Geometry.js";
+import { NumberValue } from "../NumberValue.js";
+
 export abstract class Shape {
-  constructor(private readonly id: string) {
+  private readonly styles = new Map<string, string>();
+  private readonly xNames: readonly string[];
+  private readonly yNames: readonly string[];
+
+  constructor(
+    private readonly id: string,
+    private readonly geometry: Geometry,
+    xNames: readonly string[],
+    yNames: readonly string[],
+  ) {
     if (id.length === 0 || /\s/.test(id)) {
       throw new Error("id must be non-empty and contain no whitespace");
     }
+    this.xNames = [...xNames];
+    this.yNames = [...yNames];
   }
 
-  getId(): string {
-    return this.id;
-  }
+  getId(): string { return this.id; }
 
   abstract getType(): string;
-
   abstract describe(): string;
 
-  abstract getAttributes(): Readonly<Record<string, string>>;
+  getAttributes(): Readonly<Record<string, string>> {
+    return { id: this.id, ...this.geometry.attributes(), ...Object.fromEntries(this.styles) };
+  }
+
+  getTextContent(): string | undefined { return undefined; }
+
+  move(dx: number, dy: number): void {
+    this.geometry.move(dx, dy, this.xNames, this.yNames);
+  }
+
+  scale(factor: number): void { this.geometry.scale(factor); }
+
+  setAttribute(attribute: string, value: string): void {
+    if (this.geometry.has(attribute)) {
+      this.geometry.set(attribute, value);
+    } else if (attribute === "fill" || attribute === "stroke") {
+      if (value.trim() === "") throw new Error(`${attribute} must not be empty`);
+      this.styles.set(attribute, value);
+    } else if (attribute === "stroke-width") {
+      const number = NumberValue.parse(value);
+      if (number < 0) throw new Error("stroke-width must be non-negative");
+      this.styles.set(attribute, String(number));
+    } else {
+      throw new Error(`unknown attribute: ${attribute}`);
+    }
+  }
+
+  protected styleDescription(): string {
+    return [...this.styles].map(([name, value]) => ` ${name}=${value}`).join("");
+  }
 }

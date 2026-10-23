@@ -1,3 +1,7 @@
+import { MoveCommand } from "./commands/MoveCommand.js";
+import { ScaleCommand } from "./commands/ScaleCommand.js";
+import { SetCommand } from "./commands/SetCommand.js";
+import { ShowCommand } from "./commands/ShowCommand.js";
 import type { DocumentStore } from "./DocumentStore.js";
 import { SaveCommand } from "./commands/SaveCommand.js";
 import type { Command } from "./commands/Command.js";
@@ -32,6 +36,14 @@ export class CommandDispatcher {
         return new InitCommand(this.session, args);
       case "create":
         return new CreateCommand(this.session, this.factory, args);
+      case "move":
+        return new MoveCommand(this.session, args);
+      case "scale":
+        return new ScaleCommand(this.session, args);
+      case "set":
+        return new SetCommand(this.session, args);
+      case "show":
+        return new ShowCommand(this.session, args);
       case "save":
         return new SaveCommand(this.session, this.store, args);
       case "tree":

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+  <rect id="card" x="40" y="40" width="100" height="60" fill="#4a90d9"/>
+  <circle id="dot" cx="240" cy="84" r="36" fill="#f5a623"/>
+  <ellipse id="oval" cx="330" cy="70" rx="50" ry="25" fill="#6abf69" stroke="#225522" stroke-width="2"/>
+  <line id="link" x1="80" y1="150" x2="400" y2="150" stroke="black"/>
+  <text id="title" x="30" y="220">SVG Editor: shapes &amp; editing</text>
+</svg>

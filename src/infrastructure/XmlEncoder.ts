@@ -1,4 +1,9 @@
 export class XmlEncoder {
+  text(value: string): string {
+    // Attribute escaping is also valid for text and preserves whitespace.
+    return this.attribute(value);
+  }
+
   attribute(value: string): string {
     // XML 1.0 excludes control characters and unpaired UTF-16 surrogates.
     if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {

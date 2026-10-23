@@ -8,12 +8,20 @@ export class HelpCommand implements Command {
     new Arguments(this.values).requireCount([0], "help");
     return [
       "Available commands (current development stage):",
-      "  init [w] [h]                           Create a canvas (default 800x600)",
-      "  create rect <id> <x> <y> <w> <h> [fill]  Create a rectangle",
-      "  tree [id]                              Show the document or one shape",
-      "  save [file.svg]                        Save SVG; reuse last successful path",
-      "  help                                   Show this help",
-      "Other shapes, containers, editing, history and SVG reading are not implemented yet.",
+      "  init [w] [h]",
+      "  create rect <id> <x> <y> <w> <h> [fill]",
+      "  create circle <id> <cx> <cy> <r> [fill]",
+      "  create ellipse <id> <cx> <cy> <rx> <ry> [fill]",
+      "  create line <id> <x1> <y1> <x2> <y2> [stroke]",
+      '  create text <id> <x> <y> "content"',
+      "  move <id> <dx> <dy>",
+      "  scale <id> <factor>",
+      "  set <id> <attr> <value>",
+      "  tree [id]",
+      "  show <id>",
+      "  save [file.svg]",
+      "  help",
+      "Containers, deletion, z-order, history and SVG reading are not implemented yet.",
     ].join("\n");
   }
 }

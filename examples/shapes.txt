@@ -1,0 +1,15 @@
+# Five leaf shapes, edited and exported through the CLI.
+init 600 300
+create rect card 30 40 100 60 #4a90d9
+create circle dot 200 70 30 #f5a623
+create ellipse oval 330 70 50 25 #6abf69
+create line link 80 150 400 150 black
+create text title 30 220 "SVG 编辑器：五种基本图形"
+move card 10 0
+scale dot 1.2
+set oval stroke #225522
+set oval stroke-width 2
+set title text "SVG Editor: shapes & editing"
+show dot
+tree
+save examples/shapes.svg

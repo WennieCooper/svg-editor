@@ -13,7 +13,7 @@ export class CreateCommand implements Command {
   execute(): string {
     const document = this.session.getDocument();
     if (this.values.length < 2) {
-      throw new Error("usage: create rect <id> <x> <y> <w> <h> [fill]");
+      throw new Error("usage: create <type> <id> [params...]");
     }
     const args = new Arguments(this.values);
     const shape = this.factory.create(args.text(0), this.values.slice(1));
