@@ -173,6 +173,41 @@ read 后 undo/redo 受历史屏障限制，新的成功编辑后才解禁。
 
 ## 当前完成情况
 
-命令总表的功能入口均已实现，包括 read、自动补 id 和全部历史屏障。仍需最终需求验收与提交文档整理；box 和动态插件系统不属于本阶段范围。
+命令总表的功能入口均已实现，最终 63 项自动检查通过，课程会话与中文流程图已验收。box 和动态插件系统不属于本阶段范围。
 
 架构与过程记录见 [doc/README.md](doc/README.md)。
+
+## 最终验收与提交
+
+最终 npm test 为 63 项通过，涵盖功能、错误目录、读写往返、历史屏障及架构约束。
+课程原版流程图是 8 个元素；带 marker 的自建 groups 示例是 9 个。
+
+- [提交文档与验收矩阵](doc/README.md)
+- [PlantUML 架构图](doc/architecture.svg) / [可编辑源码](doc/architecture.puml)
+- [课程完整会话输出](doc/acceptance-session.txt)
+- [中文流程图输出](doc/acceptance-flowchart.txt)
+- [中文流程图 SVG](examples/assignment-flowchart.svg)
+
+回放课程示例：
+
+```powershell
+Get-Content -Encoding UTF8 examples/assignment-session.txt | npm run cli
+Get-Content -Encoding UTF8 examples/assignment-flowchart.txt | npm run cli
+```
+
+完整会话中的两条 error 是故意验证非法分组与保存后的历史屏障；中文流程图脚本应无 error。
+
+检查文档与结果后，先完成最后一次提交，再打标签（不要提前打在旧提交上）：
+
+```powershell
+git add .
+git commit -m "test: 完成需求验收、架构自查和提交文档"
+git push origin main
+git tag -a final -m "Lab1 Phase 1 final submission"
+git push origin final
+git status --short
+git ls-remote --tags origin final
+```
+
+以上为手动发布步骤，必须在课程截止时间前完成。若已经存在 final，不要直接覆盖，先确认它是否指向实际最终提交。
+空的 git status --short 表示工作区干净；远程 final 输出表示标签已推送。最终交付以远程仓库和 final 标签为凭。

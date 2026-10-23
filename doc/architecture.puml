@@ -1,0 +1,20 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName SansSerif
+title SVG Editor - Phase 1 module dependencies
+component "src/main.ts\nComposition root" as MAIN
+component "src/cli\nREPL / Tokenizer" as CLI
+component "src/application\nCommands / History / Factory\nDocumentStore port" as APP
+component "src/domain\nShapes / Composite\nDocument / Snapshot" as DOMAIN
+component "src/infrastructure\nSVG reader / writer\nFile storage" as INFRA
+MAIN --> CLI : starts
+MAIN --> APP : assembles
+MAIN --> INFRA : injects storage
+CLI --> APP : executes commands
+APP --> DOMAIN : edits model
+INFRA --> DOMAIN : reads / serializes
+INFRA --> APP : implements port\nuses shape factory
+@enduml

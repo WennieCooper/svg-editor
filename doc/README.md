@@ -1,69 +1,70 @@
-# 架构方案与开发记录
+# Lab1 Phase 1：架构方案、过程记录与最终自查
+
+本项目使用 TypeScript 和面向对象设计实现命令行 SVG 编辑器。课程要求的 19 个命令入口、六种内置图形、Composite 容器、SVG 文件读写及 undo/redo 均已实现。最终自动验收为 63 项通过，详细证据见“质量保证手段”；SVG 导入范围和结构操作的边界见下文。
 
 ## 架构方案
 
 ### 模块划分
 
-当前已建立 cli、application、domain、infrastructure 和启动入口。模块目录齐备，但功能仍按阶段实现。
-
-| 模块 | 职责 |
+| 模块 | 职责与主要对象 |
 | --- | --- |
-| src/cli | REPL、分词、显示输出，不包含图形规则 |
-| src/application | 命令执行、编辑会话、历史管理，以及文件存储接口 |
-| src/domain | 图形类、文档树、id 唯一性与层级约束 |
-| src/infrastructure | SVG 解析、序列化和文件读写，实现 application 的存储接口 |
-| src/main.ts | 组装对象和依赖，启动程序 |
+| src/cli | Cli 负责 REPL 与输出，Tokenizer 负责引号、注释和分词；不包含图形规则 |
+| src/application | 具体命令、CommandDispatcher、EditorSession、CommandHistory；ShapeFactory/ShapeDefinition 统一构造；DocumentStore 定义存储接口 |
+| src/domain | Shape 和六种图形类、Geometry、SvgDocument、DocumentSnapshot、SvgPresentation；维护图形行为和文档约束 |
+| src/infrastructure | SvgReader、SvgWriter、XmlEncoder、SvgFileStore；隔离 XML 库与磁盘 IO |
+| src/main.ts | 组装会话、工厂、存储与 CLI，负责依赖注入 |
 
-组件图（PlantUML 源码）：
+![PlantUML 组件依赖图](architecture.svg)
 
-```plantuml
-@startuml
-component "cli" as CLI
-component "application" as APP
-component "domain" as DOMAIN
-component "infrastructure" as INFRA
-component "main (composition root)" as MAIN
-CLI --> APP
-APP --> DOMAIN
-INFRA --> DOMAIN
-INFRA --> APP : implements storage interface
-MAIN --> CLI
-MAIN --> APP
-MAIN --> INFRA
-@enduml
-```
+图由 [architecture.puml](architecture.puml) 使用 PlantUML 1.2025.2 在本机渲染；不要求运行程序的同学安装 Java 或 PlantUML。SVG 图可在 GitHub 或浏览器直接查看。
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand、DeleteCommand、FrontCommand、BackCommand、CanvasCommand，由 CommandDispatcher 统一创建并执行；编辑命令包装为 UndoableCommand，CommandHistory 管理撤销重做。
-- Composite：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作；变换先构造全部子孙的有效计划，再整体应用。
-- Factory：ShapeFactory 注册表集中完成类型到图形的构造映射，ShapeDefinition 封装 CLI 和 SVG 导入的构造规则；六种内置类型共用定义。
-- Memento：DocumentSnapshot 封装私有文档副本，恢复时返回新的深拷贝；UndoableCommand 保存前后快照，以空间换取可靠恢复。各图形多态 clone，避免按类型还原对象。
+| 模式 | 在代码中的落地 | 选择理由 |
+| --- | --- | --- |
+| Command（课程必需） | commands/Command 为统一协议，各命令类实现 execute；CommandDispatcher 创建并执行命令 | 将输入语法与业务操作分离，为其他交互入口保留应用操作 |
+| Composite | Shape 统一图形操作，Group 递归组合子图形并委派 move/scale，文档统一删除子树 | 容器与叶子共享操作语义，命令不按图形种类分派 |
+| Factory | ShapeFactory 的六类型注册表与 ShapeDefinition，供 CLI 和 SVG Reader 共用 | 避免读入和新建使用两套构造规则 |
+| Memento + 命令包装 | UndoableCommand 保存编辑前后 DocumentSnapshot，CommandHistory 保存可撤销命令对象；各类型多态 clone | 一次撤销恢复完整父级、顺序、样式和文字，不靠反向算术；重做恢复结果快照而非重新执行操作 |
 
-仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory（注册表），其他业务代码不按图形类型名分派。注册式定义改善了 CLI/读取规则的一致性，后续动态插件的发现与加载仍未实现。
+几何变换先生成经过校验的计划，容器收集所有子孙计划后统一执行；UndoableCommand 还为意外部分失败提供快照回滚。
 
-### 依赖方向规则
+按名字分派仅有两处，明确列为后续阶段待重构点：
 
-- cli 可依赖 application；不直接操作领域对象或文件系统。
-- application 可依赖 domain；不依赖 cli 或具体 infrastructure 实现。
-- domain 不依赖其他业务层，也不执行终端或文件 IO。
-- infrastructure 可依赖 domain，以及 application 定义的存储接口。
-- main 为组装入口，可依赖上述模块。
-- 当前使用 Node.js readline 与流接口的代码只出现在 cli 和入口。
+1. CommandDispatcher 的命令名 switch：后续可改为命令注册及发现。
+2. ShapeFactory 的类型名注册表：当前仅内置六类型；后续插件发现、加载和 ShapeProvider 协议尚未实现。
+
+### 依赖方向规则与理由
+
+| 模块 | 允许依赖 | 理由 |
+| --- | --- | --- |
+| cli | 本层、application、Node readline/stream | 只处理交互，将业务交给命令；不直接操作领域图形或文件 |
+| application | 本层、domain | 编辑流程复用领域行为；通过 DocumentStore 接口使用存储，不绑定具体 XML 或文件实现 |
+| domain | 本层 | 核心模型可脱离终端、Node IO 与 XML 库运行和测试 |
+| infrastructure | 本层、application、domain，以及 XML/Node IO | 实现应用层存储接口，消费共用工厂，并把 XML 转换为领域对象 |
+| main | 所有模块 | 仅负责组装具体依赖，不承载业务规则 |
+
+禁止 application 依赖 cli/infrastructure，禁止 domain 依赖其他业务层或外部库。已用 TypeScript AST 检查所有静态 import；当前无违规依赖。动态插件加载未实现，因此不涉及动态 import 例外。
 
 ### 变化点假设
 
-1. 新图形类型：通过图形多态和集中工厂降低修改范围；本阶段不实现插件加载器与 box。
-2. 新交互入口：命令行与应用操作分离，为未来 GUI 或其他入口保留复用空间。
-3. 文件格式或存储方式：通过存储接口隔离具体 SVG 和文件 IO。
-4. 撤销策略：集中于历史管理模块；先保证正确性，不提前优化为增量日志。
+1. **图形类型增加**：通过 Shape 多态和集中定义减少分散判断；新类型仍需注册。当前不实现 box 或插件加载器，避免超出 Phase 1。
+2. **交互方式增加**：CLI 仅处理交互，命令与会话可供未来 GUI/agent 复用。当前不提前建设 GUI。
+3. **格式或存储方式变化**：DocumentStore 隔离磁盘与 SVG；目前只有 SvgFileStore 实现。
+4. **大文档与长历史**：快照内存随文档和历史长度增长。目前优先可靠恢复，不设历史上限；规模扩大后再评估容量限制或增量历史。
+5. **完整 SVG 支持**：目前按六种图形和明确展示属性处理；不认识的内容拒绝读取。后续可扩展导入定义，当前不静默丢弃未实现内容。
 
-### 待明确的需求
+### 明确的实现约定与范围
 
-- group 跨父容器规则已明确：最近公共父级、第一个选中分支前插入、按原树前序保序；细节见容器阶段记录。
-- 外部 SVG 的处理范围已明确：保留变换与展示属性，编辑局部坐标；不支持内容拒绝读取，详见读取阶段记录。
-- 普通 g 的 set 样式采用 SVG 继承，不强制传播；解组移除组样式，当前未实现外观保留式样式展开。
-- 示例保存的元素计数有不一致，以明确的计数规则和实际结构为准。
+- group 至少选两个不同节点，按原树前序保序；拒绝同时选择祖先和子孙。新组位于最近公共父级、第一个选中节点所在分支之前。空的原父容器保留。
+- ungroup 依需求拒绝根级容器；嵌套组的子节点按序提升并占据组的位置。它不是撤销分组，不恢复原来的不同父级或交错顺序。
+- 普通 g 的样式遵循 SVG 继承，不强制覆盖子节点显式样式。
+- 导入 transform 原样保留，编辑局部几何坐标。解组移除组样式和变换，重新归属不补偿父级变换；不宣称屏幕外观保持。
+- canvas 只给宽度时保留现有高度；修改宽高不缩放图形，viewBox 重置为 0 0 新宽 新高。
+- read 成功建立默认保存路径，显式 save 成功后更新当前路径；无参数 save 使用该路径。init 成功后清空路径。help 可在尚无文档时查看。
+- 元素计数包含全部图形和 g，不包含根 svg。课程原版两节点流程图为 8 个元素；本项目额外带 marker 的 groups 示例为 9 个。最初分析的误计数已在最终过程记录中纠正。
+- 导入支持六类图形、命名空间、实体、CDATA、px/数字长度和展示属性；不支持 path/use、tspan、CSS style、百分比/其他单位及 DOCTYPE，遇到时保留原文档并报错。
+- box 属后续插件阶段；本阶段 create box 按要求报未知类型。data-kind=box 的 SVG 作为普通 g 降级读取。
 
 ## 过程记录
 
@@ -168,14 +169,81 @@ MAIN --> INFRA
 - 回放 examples/read.txt：自动补 rect1/g1/text1，移动矩形、撤销重做、修改标题后保存 imported.svg；再次 read 不再补 id。浏览器验收确认字体与嵌套变换保留，Read & edit 和 SVG 正常显示。脚本中两次 read 后的 undo 报错是刻意检查历史屏障。
 - 命令总表的功能入口均已实现；仍需最终按需求逐项验收和文档一致性整理，不在本阶段提前打 final 标签。
 
+### 2026-10-23：最终需求验收与文档收尾
+
+- 已核对八次分步提交；验收开始时本地 main 与远程 main 同为 ad3ab8d，工作区干净，未提前创建 final 标签。
+- 新增课程第 6 节完整会话与第 6.1 节中文流程图的实际 CLI 回放。路径仅改为 examples/，以避免污染项目根目录。
+- 最初分析误认为原版流程图有 9 个元素，并误把示例计数判为不一致。验收测试失败后逐项重数：flowchart 1 + node1 3 + node2 3 + line 1 = 8，程序输出正确；额外 marker 的自建示例才是 9。已修正新增测试预期和最终说明，没有为错误预期修改程序。
+- 补充 TypeScript AST 架构检查，覆盖模块依赖、IO 边界、一类一文件、类名与文件名一致，以及生产源码无顶层自由函数。
+- 导出 architecture.puml 和实际渲染的 architecture.svg，浏览器确认所有模块、箭头与标签清晰可见；补充依赖理由、变化点取舍、最终实现边界及验收矩阵。
+- npm test 最终 63/63 通过，npm run typecheck 与 git diff --check 通过。典型会话真实输出保存在 acceptance-session.txt、acceptance-flowchart.txt。
+- 浏览器确认中文“开始”和“处理数据 v2”正常显示，移动后 undo 恢复节点位置，保存文件实际为 8 元素。
+- 最终验收未发现需要修改生产实现的问题；本轮修改主要是验收用例、可回放样例和提交文档。最后提交与 final 标签由用户在查看结果后按 README 步骤执行。
+
 ## 一致性自查
 
-- 当前实际目录与目标架构的四个模块一致；infrastructure 已实现 XML 解析、SVG 读写与磁盘保存。
-- 抽样检查新增 import：Cli 仅依赖应用层分发器，application 依赖 domain，domain 只依赖本层；未出现反向业务依赖。新增 SvgFileStore 依赖 application 的 DocumentStore 接口与 domain，具体实现由 main 注入；保存命令不依赖 node:fs。Shape.describe 是无 IO 的领域描述，树形连接符由 TreeCommand 负责。
-- 后续每阶段复核新增依赖并记录架构修订。
+### 1. 实际模块与方案是否一致？
+
+一致。最终目录为 cli、application、domain、infrastructure 及 main；同一模块内部增加 commands、shapes 子目录，未新增架构层。
+
+实现过程的修订均已记录：先做 save 以便可视化，再扩展图形；随后加入容器与历史；最后把工厂 switch 改为 CLI/读取共用的注册定义。新增 ShapeDefinition、SvgPresentation、DocumentSnapshot 属于原有模块职责，未改变依赖方向。
+
+生产类均一类一文件且类名与文件名一致；字段保持封装。Command、DocumentStore 为接口文件，main 为组装入口，不要求伪造类。
+
+### 2. 是否违反依赖规则？
+
+未发现违规。最终不只抽样，而是对全部源码静态 import 执行架构测试。代表性证据：
+
+- Cli -> CommandDispatcher：交互层只依赖应用层。
+- UndoableCommand -> DocumentSnapshot：应用层使用领域快照。
+- SvgFileStore -> DocumentStore / SvgReader / SvgWriter：具体存储实现依赖接口与本层实现。
+- SvgReader -> ShapeFactory / SvgDocument：读取复用应用工厂并构建领域文档。
+- domain 内只有本层 import，没有 node:fs、readline 或 XML 库。
+- CommandDispatcher 和 ShapeFactory 是仅有的两个名字分派点；未出现业务代码到处 switch(tag)。
 
 ## 质量保证手段
 
-初始化阶段通过类型检查、构建和 CLI 冒烟检查。第二阶段通过 npm run typecheck 和 npm test（先编译，再运行 4 组自动测试），覆盖分词、唯一 id、尺寸约束、默认参数、创建顺序、tree 输出，以及非法命令后的状态保持。真实 CLI 子进程验证报错后继续处理、注释、颜色和 EOF。测试使用 Node.js 内置 test/assert，不新增测试框架依赖。
+### 可复现验证
 
-后续重点验证：失败时文档与历史不变、嵌套容器操作、层级与顺序恢复、历史屏障、SVG 读写往返、id 补全与冲突、典型会话回放。
+```powershell
+npm ci
+npm run typecheck
+npm test
+```
+
+npm test 会编译后运行 Node.js 内置测试，无需额外测试框架。最终结果为 **63 项通过、0 失败**，覆盖功能、输入错误、历史、文件 IO、真实 CLI 和架构约束。类型检查与构建均成功。
+
+### 需求验收矩阵
+
+| 要求 | 验证依据 | 结果 |
+| --- | --- | --- |
+| REPL、提示符、引号、注释与颜色 | core.test.mjs；实际 CLI 子进程 | 通过 |
+| 六种 create、in、唯一且大小写敏感 id | core/editing/groups/read 测试 | 通过 |
+| move/scale/set 与几何白名单 | editing.test.mjs，含全部几何属性、非正倍率、溢出原子性 | 通过 |
+| 容器统一操作与递归树 | groups.test.mjs；中文流程图验收 | 通过 |
+| delete/group/ungroup/addto | document/groups/history 测试，含父级与顺序恢复、循环拒绝 | 通过 |
+| front/back 同级 z-order | document/history 测试及浏览器前后遮挡对比 | 通过 |
+| init/canvas 与画布尺寸 | document/history 测试，含保留内容、路径和失败原子性 | 通过 |
+| tree/show/help | core/editing/groups 与验收会话 | 通过 |
+| save/read、默认路径、自动 id | save/read 测试，含后置冲突、中文路径、实体与 CDATA | 通过 |
+| 一条编辑一个撤销单元 | history.test.mjs，覆盖每种编辑、连续多步、id 复用 | 通过 |
+| redo 分支与 IO 历史屏障 | history/read 测试，含失败操作不清 redo、不解禁 | 通过 |
+| 失败不改变文档与历史 | 各类失败输入与注入部分失败回滚 | 通过 |
+| 指定错误信息 | acceptance.test.mjs 精确比较 13 条 CLI 错误 | 通过 |
+| 课程完整会话、两节点流程图 | acceptance.test.mjs，真实保存并读回检查 | 通过 |
+| OO、Command、Composite、字段封装 | 类设计、代码检查与 architecture.test.mjs | 通过 |
+| 目录、依赖方向、一类一文件 | architecture.test.mjs 全部源码静态检查 | 通过 |
+| Git 分步开发 | 验收时 8 次分步提交，远程 main 与本地一致 | 已核对；最终以仓库提交历史为准 |
+| doc/README.md 与 PlantUML 图 | 本文件、architecture.puml、architecture.svg | 已完成 |
+| 截止前 final 标签 | 最终提交后执行 README 中的命令 | 发布步骤见 README，以远程标签为凭 |
+
+### 实际输出与视觉验证
+
+- [课程完整会话输出](acceptance-session.txt)：包含预期的非法分组和 IO 后 undo 错误，两者均由验收测试精确确认。
+- [中文流程图会话输出](acceptance-flowchart.txt)：无功能错误，保存 8 元素。
+- [中文流程图](../examples/assignment-flowchart.svg)：浏览器确认矩形、中文、连线和撤销后坐标。
+- [图层调整前](../examples/layers-before.svg) / [图层调整后](../examples/layers-after.svg)：浏览器确认视觉前后顺序。
+- [外部 SVG 编辑后](../examples/imported.svg)：浏览器确认字体、嵌套 transform 和实体内容保留。
+- [架构图](architecture.svg)：本机 PlantUML 渲染并完成浏览器视觉检查。
+
+成功摘要的措辞不逐字模拟示例，但操作结果和必要信息一致；课程指定错误文本由 CLI 验收精确检查。完整 SVG 标准和后续 box 插件不在本阶段兼容性声明内，边界已明确。
