@@ -14,6 +14,11 @@ export class HelpCommand implements Command {
       "  create ellipse <id> <cx> <cy> <rx> <ry> [fill]",
       "  create line <id> <x1> <y1> <x2> <y2> [stroke]",
       '  create text <id> <x> <y> "content"',
+      "  create g <id>",
+      "  All create commands support an optional trailing: in <containerId>",
+      "  group <newGid> <id1> <id2>...",
+      "  ungroup <gid>",
+      "  addto <gid> <id>",
       "  move <id> <dx> <dy>",
       "  scale <id> <factor>",
       "  set <id> <attr> <value>",
@@ -21,7 +26,7 @@ export class HelpCommand implements Command {
       "  show <id>",
       "  save [file.svg]",
       "  help",
-      "Containers, deletion, z-order, history and SVG reading are not implemented yet.",
+      "Deletion, z-order, canvas, history and SVG reading are not implemented yet.",
     ].join("\n");
   }
 }

@@ -15,6 +15,6 @@ export class SaveCommand implements Command {
     const args = new Arguments(this.values);
     args.requireCount([0, 1], "save [file.svg]");
     const filePath = this.session.save(this.store, args.optionalText(0));
-    return `saved to ${filePath} (${document.getShapes().length} elements)`;
+    return `saved to ${filePath} (${document.countShapes()} elements)`;
   }
 }

@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
-  <circle id="c1" cx="180" cy="120" r="45" fill="red"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="240" viewBox="0 0 400 240">
+  <g id="scene">
+    <g id="node">
+      <rect id="card" x="130" y="90" width="120" height="60" fill="orange"/>
+      <text id="label" x="150" y="125">Hello</text>
+    </g>
+  </g>
 </svg>

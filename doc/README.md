@@ -35,9 +35,9 @@ MAIN --> INFRA
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
-- Composite（计划）：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作。
-- Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text；容器 g 待实现。
+- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
+- Composite：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作；变换先构造全部子孙的有效计划，再整体应用。
+- Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text、g 六种内置类型。
 - Memento（待验证）：优先评估快照式撤销，用空间换取结构操作的恢复可靠性。
 
 仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory，其他业务代码不按图形类型名分派。
@@ -60,9 +60,9 @@ MAIN --> INFRA
 
 ### 待明确的需求
 
-- group 跨父容器时，新组的父级、插入位置与相对顺序。
+- group 跨父容器规则已明确：最近公共父级、第一个选中分支前插入、按原树前序保序；细节见容器阶段记录。
 - 外部 SVG 的 transform、不支持标签及其他非白名单属性的处理范围。
-- 普通 g 的 set 样式采用 SVG 容器属性语义；是否有额外传播要求需核对。
+- 普通 g 的 set 样式采用 SVG 继承，不强制传播；解组移除组样式，当前未实现外观保留式样式展开。
 - 示例保存的元素计数有不一致，以明确的计数规则和实际结构为准。
 
 ## 过程记录
@@ -113,6 +113,20 @@ MAIN --> INFRA
 - 验证：npm test 累计 16 组检查通过，npm run typecheck 通过。新增覆盖五类移动与缩放、两端点、非正倍率、溢出回滚、属性白名单、负半径与尺寸、文字和空文字编辑、缺省样式、XML 内容转义。
 - 用真实 CLI 回放 examples/shapes.txt，生成 examples/shapes.svg；XML 解析确认五个元素。浏览器验收看到矩形、缩放后的圆、有描边的椭圆、直线和包含 & 的标题，未见 XML 错误或文字截断。
 - 仍未实现容器、in、分组、删除、z-order、canvas、历史及 read；这些功能按后续提交逐项推进。
+
+### 2026-10-23：容器、嵌套与分组
+
+- 第四次提交已完成，本阶段开始时工作区干净。新增 Group 类，工厂现已支持全部六种内置类型。
+- Composite 落地：Shape 为叶子提供空子集，Group 维护子图形，递归委派移动与缩放；命令不判断图形类型。Geometry 返回先验证后执行的变换计划，Group 收集全部子孙计划成功后才统一应用，避免嵌套操作部分生效。
+- SvgDocument 管理根节点、全局 id 索引、父节点索引和层级调整；getShapes 返回根节点快照，countShapes 返回含全部子孙的元素数量。分组、移动归属和解组完成后同步维护父级与索引。
+- 新增 group、ungroup、addto 命令；所有 create 类型支持尾部 in 子句。文字内容本身为 "in" 时仍可正常创建。
+- 对需求未明确处作出约定：group 至少选择两个不同节点，按原树前序保序，拒绝同时选择祖先与子孙。新组放在所选节点的最近公共父级，位于第一个选中节点所属分支之前；原父容器变空时保留。跨级移动使用显式几何坐标，当前不生成 transform。
+- ungroup 仅允许非根级普通 g；子节点按原顺序连续占据被解散容器的位置。解组不是 undo：它不恢复分组前不同父级和交错顺序。空的嵌套组也可解散。
+- 普通 g 的 set 样式保存在组上，遵循 SVG 继承，不强制覆盖子节点已有样式。解组移除组本身及其样式，不额外复制继承样式到子节点；这是当前结构操作约定。
+- tree 使用 TreeRenderer 递归绘制树形连接符；show 显示真实父级。SVG 序列化递归保存子元素，无 switch(tag)。save 的元素计数修正为整棵文档树数量。
+- 验证：npm test 累计 22 组检查通过，npm run typecheck 通过。新增覆盖所有类型 in、深层 Composite、空容器、溢出原子性、分组相对顺序、最近公共父级、解组位置、addto 末尾追加、循环拒绝、重复 id 和失败后索引及父级不变。
+- 用真实 CLI 回放 examples/groups.txt，生成 9 元素的 examples/groups.svg；XML 解析确认元素数量，浏览器确认两个“矩形+文字”节点与连线显示正常，第二节点矩形与标签都下移 100。
+- 当前未实现 delete、front/back、canvas、undo/redo 和 read；下一阶段继续补全。
 
 ## 一致性自查
 

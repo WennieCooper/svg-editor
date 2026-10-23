@@ -29,12 +29,23 @@ export abstract class Shape {
   }
 
   getTextContent(): string | undefined { return undefined; }
+  isContainer(): boolean { return false; }
+  getChildren(): readonly Shape[] { return []; }
 
-  move(dx: number, dy: number): void {
-    this.geometry.move(dx, dy, this.xNames, this.yNames);
+  contains(shape: Shape): boolean {
+    return this === shape || this.getChildren().some((child) => child.contains(shape));
   }
 
-  scale(factor: number): void { this.geometry.scale(factor); }
+  move(dx: number, dy: number): void { this.planMove(dx, dy)(); }
+  scale(factor: number): void { this.planScale(factor)(); }
+
+  planMove(dx: number, dy: number): () => void {
+    return this.geometry.planMove(dx, dy, this.xNames, this.yNames);
+  }
+
+  planScale(factor: number): () => void {
+    return this.geometry.planScale(factor);
+  }
 
   setAttribute(attribute: string, value: string): void {
     if (this.geometry.has(attribute)) {

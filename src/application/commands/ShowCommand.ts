@@ -15,6 +15,6 @@ export class ShowCommand implements Command {
       .map(([name, value]) => `  ${name}=${value}`);
     const text = shape.getTextContent();
     if (text !== undefined) attributes.push(`  text=${JSON.stringify(text)}`);
-    return [`${shape.getType()}#${shape.getId()}  parent=svg`, ...attributes].join("\n");
+    return [`${shape.getType()}#${shape.getId()}  parent=${document.parentLabel(shape.getId())}`, ...attributes].join("\n");
   }
 }

@@ -1,3 +1,6 @@
+import { GroupCommand } from "./commands/GroupCommand.js";
+import { UngroupCommand } from "./commands/UngroupCommand.js";
+import { AddToCommand } from "./commands/AddToCommand.js";
 import { MoveCommand } from "./commands/MoveCommand.js";
 import { ScaleCommand } from "./commands/ScaleCommand.js";
 import { SetCommand } from "./commands/SetCommand.js";
@@ -36,6 +39,12 @@ export class CommandDispatcher {
         return new InitCommand(this.session, args);
       case "create":
         return new CreateCommand(this.session, this.factory, args);
+      case "group":
+        return new GroupCommand(this.session, args);
+      case "ungroup":
+        return new UngroupCommand(this.session, args);
+      case "addto":
+        return new AddToCommand(this.session, args);
       case "move":
         return new MoveCommand(this.session, args);
       case "scale":

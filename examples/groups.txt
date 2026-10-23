@@ -1,0 +1,18 @@
+# Two composed nodes; moving node2 moves both its rectangle and label.
+init 800 400
+create g flowchart
+create g node1 in flowchart
+create rect start 120 100 160 60 #4a90d9 in node1
+create text start-label 155 135 "Start" in node1
+create g node2 in flowchart
+create rect process 520 100 160 60 #f5a623 in node2
+create text process-label 545 135 "Process" in node2
+create line edge 280 130 520 230 black in flowchart
+move node2 0 100
+group parts process-label process
+ungroup parts
+create circle marker 400 180 8 red
+addto flowchart marker
+show process-label
+tree
+save examples/groups.svg

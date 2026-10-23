@@ -12,12 +12,18 @@ export class CreateCommand implements Command {
 
   execute(): string {
     const document = this.session.getDocument();
-    if (this.values.length < 2) {
-      throw new Error("usage: create <type> <id> [params...]");
+    if (this.values.length < 2) throw new Error("usage: create <type> <id> [params...] [in <containerId>]");
+    const values = [...this.values];
+    // Only a final pair is a clause: a text content token equal to "in" stays content.
+    let containerId: string | undefined;
+    if (values.length >= 4 && values[values.length - 2] === "in") {
+      containerId = values.pop()!;
+      values.pop();
     }
-    const args = new Arguments(this.values);
-    const shape = this.factory.create(args.text(0), this.values.slice(1));
-    document.add(shape);
-    return `${shape.getType()}#${shape.getId()} created`;
+    const args = new Arguments(values);
+    const shape = this.factory.create(args.text(0), values.slice(1));
+    document.add(shape, containerId);
+    const parent = containerId === undefined ? "" : ` in g#${containerId}`;
+    return `${shape.getType()}#${shape.getId()} created${parent}`;
   }
 }
