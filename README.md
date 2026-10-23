@@ -39,7 +39,7 @@ save demo.svg
 文件保存在终端当前工作目录中；从项目根目录启动时，就是项目根目录的 demo.svg。
 将文件拖入 Edge、Chrome 或 Firefox 即可查看，重新保存后刷新浏览器。不需要 HTTP 服务或额外扩展。
 
-现成示例：[两个矩形](examples/rectangles.svg)、[五种图形与编辑](examples/shapes.svg)、[容器与节点组合](examples/groups.svg)。
+现成示例：[两个矩形](examples/rectangles.svg)、[五种图形与编辑](examples/shapes.svg)、[容器与节点组合](examples/groups.svg)、[图层调整前](examples/layers-before.svg)、[图层调整后](examples/layers-after.svg)。
 在 PowerShell 项目根目录回放完整例子：
 
 ```powershell
@@ -49,6 +49,7 @@ Get-Content -Encoding UTF8 examples/shapes.txt | npm run cli
 ## 当前命令
 
 - init [w] [h]：默认 800×600；仅提供宽度时高度默认 600。
+- canvas [w] [h]：无参数查询；带参数修改尺寸但保留图形，只给宽度时保留原高度。
 - create：五种叶子图形，完整参数见 help。
 - create g <id>：创建容器。所有 create 可追加 in <containerId>，在创建时指定父级。
 - group <newGid> <id1> <id2>...：至少两个图形，按原树顺序收编到新组，位置规则见架构文档。
@@ -57,6 +58,8 @@ Get-Content -Encoding UTF8 examples/shapes.txt | npm run cli
 - move <id> <dx> <dy>：增量平移；直线两端点、容器全部子孙一起移动。
 - scale <id> <factor>：正倍率同时缩放位置和尺寸，以原点为中心，容器递归作用于全部子孙；不缩放 stroke-width 或文字字体大小。
 - set <id> <attr> <value>：公共属性 fill/stroke/stroke-width，加各图形自身的几何属性；text 额外支持 text 内容。id、transform 等白名单外属性拒绝修改。
+- delete <id>：删除图形；容器连同全部子孙删除。
+- front <id> / back <id>：在同级范围内移至视觉最前/最后；SVG 列表中 front 位于末尾、back 位于开头。
 - tree [id]：显示全部图形或指定图形。
 - show <id>：显示父节点、几何及样式属性和文本内容。
 - save [file.svg]：首次必须给路径，成功后可省略并复用路径；init 成功后清空旧路径。已有文件会被替换，父目录须存在。
@@ -87,9 +90,29 @@ save demo.svg
 
 普通组的 fill/stroke 按 SVG 继承，子图形显式设置的样式优先。解组按结构提升子节点，不复制被移除组的样式。
 
+## 图层与画布体验
+
+在 CLI 中创建重叠矩形，保存前后对比：
+
+```text
+init 400 240
+create rect red 40 40 160 100 red
+create rect blue 100 80 160 100 #4a90d9
+save before.svg
+front red
+canvas 500 280
+save after.svg
+back red
+delete blue
+tree
+```
+
+before.svg 中蓝色在上面，after.svg 中红色在上面。画布尺寸变化不会缩放已有图形。
+完整回放：Get-Content -Encoding UTF8 examples/layers.txt | npm run cli。
+
 ## 尚未完成
 
-删除、z-order、canvas、撤销重做、SVG 读取。
-save 对历史的屏障行为将在历史模块阶段实现。
+撤销重做、SVG 读取。
+init、save 与 canvas 修改尺寸对历史的屏障行为将在历史模块阶段实现。
 
 架构与过程记录见 [doc/README.md](doc/README.md)。

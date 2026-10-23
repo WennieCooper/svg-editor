@@ -1,3 +1,7 @@
+import { DeleteCommand } from "./commands/DeleteCommand.js";
+import { FrontCommand } from "./commands/FrontCommand.js";
+import { BackCommand } from "./commands/BackCommand.js";
+import { CanvasCommand } from "./commands/CanvasCommand.js";
 import { GroupCommand } from "./commands/GroupCommand.js";
 import { UngroupCommand } from "./commands/UngroupCommand.js";
 import { AddToCommand } from "./commands/AddToCommand.js";
@@ -39,6 +43,14 @@ export class CommandDispatcher {
         return new InitCommand(this.session, args);
       case "create":
         return new CreateCommand(this.session, this.factory, args);
+      case "delete":
+        return new DeleteCommand(this.session, args);
+      case "front":
+        return new FrontCommand(this.session, args);
+      case "back":
+        return new BackCommand(this.session, args);
+      case "canvas":
+        return new CanvasCommand(this.session, args);
       case "group":
         return new GroupCommand(this.session, args);
       case "ungroup":

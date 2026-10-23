@@ -9,6 +9,7 @@ export class HelpCommand implements Command {
     return [
       "Available commands (current development stage):",
       "  init [w] [h]",
+      "  canvas [w] [h]    Query dimensions, or resize without changing shapes",
       "  create rect <id> <x> <y> <w> <h> [fill]",
       "  create circle <id> <cx> <cy> <r> [fill]",
       "  create ellipse <id> <cx> <cy> <rx> <ry> [fill]",
@@ -22,11 +23,14 @@ export class HelpCommand implements Command {
       "  move <id> <dx> <dy>",
       "  scale <id> <factor>",
       "  set <id> <attr> <value>",
+      "  delete <id>",
+      "  front <id>    Bring to foreground within siblings",
+      "  back <id>     Send to background within siblings",
       "  tree [id]",
       "  show <id>",
       "  save [file.svg]",
       "  help",
-      "Deletion, z-order, canvas, history and SVG reading are not implemented yet.",
+      "Undo/redo and SVG reading are not implemented yet.",
     ].join("\n");
   }
 }

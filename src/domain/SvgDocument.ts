@@ -6,10 +6,8 @@ export class SvgDocument {
   private readonly shapes = new Map<string, Shape>();
   private readonly parents = new Map<Shape, Group | undefined>();
 
-  constructor(private readonly width: number = 800, private readonly height: number = 600) {
-    if (![width, height].every((value) => Number.isFinite(value) && value > 0)) {
-      throw new Error("canvas dimensions must be positive finite numbers");
-    }
+  constructor(private width: number = 800, private height: number = 600) {
+    this.validateDimensions(width, height);
   }
 
   getWidth(): number { return this.width; }
@@ -93,6 +91,40 @@ export class SvgDocument {
     this.parents.delete(group);
     this.shapes.delete(id);
     return children.length;
+  }
+
+  resize(width: number, height: number): void {
+    this.validateDimensions(width, height);
+    this.width = width;
+    this.height = height;
+  }
+
+  delete(id: string): Shape {
+    const shape = this.find(id);
+    const subtree = this.walk([shape]);
+    this.detach(shape);
+    for (const node of subtree) {
+      this.shapes.delete(node.getId());
+      this.parents.delete(node);
+    }
+    return shape;
+  }
+
+  front(id: string): Shape { return this.reorder(id, true); }
+  back(id: string): Shape { return this.reorder(id, false); }
+
+  private reorder(id: string, foreground: boolean): Shape {
+    const shape = this.find(id);
+    const parent = this.parents.get(shape);
+    this.detach(shape);
+    this.attach(shape, parent, foreground ? undefined : 0);
+    return shape;
+  }
+
+  private validateDimensions(width: number, height: number): void {
+    if (![width, height].every((value) => Number.isFinite(value) && value > 0)) {
+      throw new Error("canvas dimensions must be positive finite numbers");
+    }
   }
 
   private container(id: string): Group {

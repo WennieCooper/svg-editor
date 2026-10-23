@@ -35,7 +35,7 @@ MAIN --> INFRA
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
+- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand、DeleteCommand、FrontCommand、BackCommand、CanvasCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
 - Composite：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作；变换先构造全部子孙的有效计划，再整体应用。
 - Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text、g 六种内置类型。
 - Memento（待验证）：优先评估快照式撤销，用空间换取结构操作的恢复可靠性。
@@ -127,6 +127,16 @@ MAIN --> INFRA
 - 验证：npm test 累计 22 组检查通过，npm run typecheck 通过。新增覆盖所有类型 in、深层 Composite、空容器、溢出原子性、分组相对顺序、最近公共父级、解组位置、addto 末尾追加、循环拒绝、重复 id 和失败后索引及父级不变。
 - 用真实 CLI 回放 examples/groups.txt，生成 9 元素的 examples/groups.svg；XML 解析确认元素数量，浏览器确认两个“矩形+文字”节点与连线显示正常，第二节点矩形与标签都下移 100。
 - 当前未实现 delete、front/back、canvas、undo/redo 和 read；下一阶段继续补全。
+
+### 2026-10-23：删除、同级图层顺序与画布尺寸
+
+- 第五次提交已完成，本阶段开始时工作区干净。新增 DeleteCommand、FrontCommand、BackCommand、CanvasCommand；领域行为集中在 SvgDocument，命令仅校验参数并调用。
+- delete 先定位并收集整棵子树，再摘除根节点并清理全部 id 与父级索引。可删除根级组和嵌套组，保留其他节点顺序；已删除子孙的 id 可以重新创建。
+- front/back 的“前后”按视觉绘制理解：SVG 同级列表末尾最后绘制，因此 front 追加到末尾、back 插入开头。调整容器时内部子节点顺序保持原样，不能越过父级与其他层级节点混排。
+- canvas 无参数只查询。带宽高参数时先整体校验，再同时更新；只提供宽度时保留现有高度。画布变小不缩放、不删除或移动任何图形，超出范围的部分按 SVG 视口显示规则处理。修改尺寸不重建文档、不清空默认保存路径。
+- 质量验证：npm test 累计 27 组检查通过，npm run typecheck 通过。新增覆盖子树删除、索引清理、id 复用、容器和叶子排序、同级隔离、重复置前置后、画布内容及路径保留、无文档和 15 类非法输入，以及真实 CLI。
+- 回放 examples/layers.txt，生成 layers-before.svg 与 layers-after.svg；XML 检查元素顺序从 red/blue 变为 blue/red。浏览器确认 front red 后红色覆盖蓝色，删除临时容器后导出文件只含两个矩形。
+- 尚未实现 undo/redo 与 read。canvas 查询将不进入历史；canvas 修改尺寸将与 init/save/read 一起形成历史屏障，这部分留给下一阶段。
 
 ## 一致性自查
 
