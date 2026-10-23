@@ -1,11 +1,15 @@
 import { createInterface } from "node:readline/promises";
 import type { Readable, Writable } from "node:stream";
-import { HelpCommand } from "../application/commands/HelpCommand.js";
+import type { CommandDispatcher } from "../application/CommandDispatcher.js";
+import { Tokenizer } from "./Tokenizer.js";
 
 export class Cli {
+  private readonly tokenizer = new Tokenizer();
+
   constructor(
     private readonly input: Readable,
     private readonly output: Writable,
+    private readonly dispatcher: CommandDispatcher,
   ) {}
 
   async run(): Promise<void> {
@@ -20,13 +24,14 @@ export class Cli {
 
     try {
       for await (const line of reader) {
-        const command = line.trim();
-        if (command !== "" && !command.startsWith("#")) {
-          if (command === "help") {
-            this.output.write(new HelpCommand().execute() + "\n");
-          } else {
-            this.output.write("error: command not implemented yet\n");
+        try {
+          const tokens = this.tokenizer.tokenize(line);
+          if (tokens.length > 0) {
+            this.output.write(this.dispatcher.execute(tokens) + "\n");
           }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "unexpected failure";
+          this.output.write("error: " + message.replace(/[\r\n]+/g, " ") + "\n");
         }
         reader.prompt();
       }
