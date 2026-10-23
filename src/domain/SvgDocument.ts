@@ -1,8 +1,13 @@
+import { NumberValue } from "./NumberValue.js";
+import { SvgPresentation } from "./SvgPresentation.js";
 import { Group } from "./shapes/Group.js";
 import type { Shape } from "./shapes/Shape.js";
 
 export class SvgDocument {
   private readonly roots: Shape[] = [];
+  private readonly presentation = new SvgPresentation();
+  private viewBox?: string;
+  private rootId?: string;
   private readonly shapes = new Map<string, Shape>();
   private readonly parents = new Map<Shape, Group | undefined>();
 
@@ -12,8 +17,43 @@ export class SvgDocument {
 
   clone(): SvgDocument {
     const copy = new SvgDocument(this.width, this.height);
+    copy.viewBox = this.viewBox;
+    copy.rootId = this.rootId;
+    this.presentation.copyTo(copy.presentation);
     for (const shape of this.roots) copy.add(shape.clone());
     return copy;
+  }
+
+  getRootId(): string | undefined { return this.rootId; }
+
+  setRootId(id: string): void {
+    if (id.length === 0 || /\s/.test(id)) throw new Error("id must be non-empty and contain no whitespace");
+    if (this.shapes.has(id) || id === this.rootId) throw new Error(`id already exists: ${id}`);
+    this.rootId = id;
+  }
+
+  static parseViewBox(value: string): readonly [number, number, number, number] {
+    const parts = value.trim().split(/[\s,]+/);
+    if (parts.length !== 4) throw new Error("viewBox must have four numbers");
+    const numbers = parts.map((part) => NumberValue.parse(part));
+    if (numbers[2]! <= 0 || numbers[3]! <= 0) throw new Error("viewBox dimensions must be positive");
+    return [numbers[0]!, numbers[1]!, numbers[2]!, numbers[3]!];
+  }
+
+  setViewBox(value: string): void {
+    this.viewBox = SvgDocument.parseViewBox(value).join(" ");
+  }
+
+  importAttribute(name: string, value: string): void { this.presentation.set(name, value); }
+
+  getRootAttributes(): Readonly<Record<string, string>> {
+    return {
+      xmlns: "http://www.w3.org/2000/svg",
+      width: String(this.width), height: String(this.height),
+      viewBox: this.viewBox ?? `0 0 ${this.width} ${this.height}`,
+      ...(this.rootId === undefined ? {} : { id: this.rootId }),
+      ...this.presentation.attributes(),
+    };
   }
 
   getWidth(): number { return this.width; }
@@ -27,7 +67,7 @@ export class SvgDocument {
     const ids = new Set<string>();
     for (const node of subtree) {
       const id = node.getId();
-      if (this.shapes.has(id) || ids.has(id)) throw new Error(`id already exists: ${id}`);
+      if (this.shapes.has(id) || ids.has(id) || id === this.rootId) throw new Error(`id already exists: ${id}`);
       ids.add(id);
     }
     this.attach(shape, parent);
@@ -47,7 +87,7 @@ export class SvgDocument {
 
   group(id: string, memberIds: readonly string[]): Group {
     const group = new Group(id);
-    if (this.shapes.has(id)) throw new Error(`id already exists: ${id}`);
+    if (this.shapes.has(id) || id === this.rootId) throw new Error(`id already exists: ${id}`);
     if (memberIds.length < 2) throw new Error("group requires at least two shapes");
     const selected = memberIds.map((memberId) => this.find(memberId));
     if (new Set(selected).size !== selected.length) throw new Error("duplicate group member");
@@ -103,6 +143,7 @@ export class SvgDocument {
     this.validateDimensions(width, height);
     this.width = width;
     this.height = height;
+    this.viewBox = undefined;
   }
 
   delete(id: string): Shape {

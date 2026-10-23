@@ -4,11 +4,15 @@ export class XmlEncoder {
     return this.attribute(value);
   }
 
-  attribute(value: string): string {
+  validate(value: string): void {
     // XML 1.0 excludes control characters and unpaired UTF-16 surrogates.
     if (/[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u.test(value)) {
       throw new Error("invalid XML character");
     }
+  }
+
+  attribute(value: string): string {
+    this.validate(value);
     return value
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")

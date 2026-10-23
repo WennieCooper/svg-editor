@@ -1,3 +1,4 @@
+import { ReadCommand } from "./commands/ReadCommand.js";
 import { UndoableCommand } from "./commands/UndoableCommand.js";
 import { UndoCommand } from "./commands/UndoCommand.js";
 import { RedoCommand } from "./commands/RedoCommand.js";
@@ -72,6 +73,8 @@ export class CommandDispatcher {
         return new UndoableCommand(new SetCommand(this.session, args), this.session);
       case "show":
         return new ShowCommand(this.session, args);
+      case "read":
+        return new ReadCommand(this.session, this.store, args);
       case "save":
         return new SaveCommand(this.session, this.store, args);
       case "tree":

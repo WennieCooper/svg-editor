@@ -1,12 +1,27 @@
 import { randomUUID } from "node:crypto";
-import { closeSync, openSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, openSync, renameSync, unlinkSync, writeFileSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import type { DocumentStore } from "../application/DocumentStore.js";
 import type { SvgDocument } from "../domain/SvgDocument.js";
+import type { ReadResult } from "../application/ReadResult.js";
+import { SvgReader } from "./SvgReader.js";
 import { SvgWriter } from "./SvgWriter.js";
 
 export class SvgFileStore implements DocumentStore {
-  constructor(private readonly writer: SvgWriter = new SvgWriter()) {}
+  constructor(
+    private readonly writer: SvgWriter = new SvgWriter(),
+    private readonly reader: SvgReader = new SvgReader(),
+  ) {}
+
+  read(filePath: string): ReadResult {
+    let source: string;
+    try {
+      source = readFileSync(filePath, "utf8");
+    } catch {
+      throw new Error(`cannot read file: ${filePath}`);
+    }
+    return this.reader.parse(source);
+  }
 
   save(document: SvgDocument, filePath: string): void {
     let descriptor: number | undefined;

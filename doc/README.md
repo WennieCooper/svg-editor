@@ -37,10 +37,10 @@ MAIN --> INFRA
 
 - Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand、DeleteCommand、FrontCommand、BackCommand、CanvasCommand，由 CommandDispatcher 统一创建并执行；编辑命令包装为 UndoableCommand，CommandHistory 管理撤销重做。
 - Composite：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作；变换先构造全部子孙的有效计划，再整体应用。
-- Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text、g 六种内置类型。
+- Factory：ShapeFactory 注册表集中完成类型到图形的构造映射，ShapeDefinition 封装 CLI 和 SVG 导入的构造规则；六种内置类型共用定义。
 - Memento：DocumentSnapshot 封装私有文档副本，恢复时返回新的深拷贝；UndoableCommand 保存前后快照，以空间换取可靠恢复。各图形多态 clone，避免按类型还原对象。
 
-仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory，其他业务代码不按图形类型名分派。
+仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory（注册表），其他业务代码不按图形类型名分派。注册式定义改善了 CLI/读取规则的一致性，后续动态插件的发现与加载仍未实现。
 
 ### 依赖方向规则
 
@@ -61,7 +61,7 @@ MAIN --> INFRA
 ### 待明确的需求
 
 - group 跨父容器规则已明确：最近公共父级、第一个选中分支前插入、按原树前序保序；细节见容器阶段记录。
-- 外部 SVG 的 transform、不支持标签及其他非白名单属性的处理范围。
+- 外部 SVG 的处理范围已明确：保留变换与展示属性，编辑局部坐标；不支持内容拒绝读取，详见读取阶段记录。
 - 普通 g 的 set 样式采用 SVG 继承，不强制传播；解组移除组样式，当前未实现外观保留式样式展开。
 - 示例保存的元素计数有不一致，以明确的计数规则和实际结构为准。
 
@@ -152,9 +152,25 @@ MAIN --> INFRA
 - 回放 examples/history.txt：删除节点后 undo 恢复矩形和文字；保存后 undo 按约定报错；新的文字编辑重新解禁，随后 undo/redo 正常。examples/history.svg 为保存时的恢复结果（标签 Hello），脚本末尾的 Hello again 只在内存中，未再次保存。
 - 尚未实现 read；下一阶段完成 SVG 读取、缺 id 补全和读写往返后再做最终需求验收。
 
+### 2026-10-23：SVG 读取、自动 id 与读写往返
+
+- 第七次提交已完成，本阶段开始时工作区干净。新增 SvgReader、ReadCommand、ReadResult，扩展 DocumentStore.read 与 EditorSession.read；XML 解析使用 @xmldom/xmldom 0.9.12，并提交依赖锁文件。
+- 不用正则解析 XML 结构。查阅已安装库的类型说明后使用 onError，使 XML 警告、错误和致命错误均拒绝读取；正确处理 XML 实体、CDATA、命名空间、注释和文字内容。
+- 实现两遍 id 分配：先收集根和全部子元素的显式 id 并拒绝重复，再按前序为缺失或空 id 分配 标签名+序号。自动分配避开文件后面才出现的显式 id 和根 id；id 大小写敏感。警告存于读取结果，仅当完整解析成功后输出。
+- 读取先在临时文档中完成，成功后才替换当前文档、设置默认保存路径并阻断历史。文件不存在报 cannot read file；格式或不支持内容报 invalid SVG。失败时保留旧文档、路径、undo/redo 和禁止状态，不提前输出补 id 警告。
+- 原工厂的 switch 改为集中定义注册表。ShapeDefinition 封装 CLI 参数与 SVG 属性的构造规则，CLI 和 Reader 共享同一个 ShapeFactory；类型名分派仍仅在命令分发与图形工厂两处，没有新增读取专用 switch(tag)。两处注册分派仍按作业要求列为后续插件化待重构点。
+- 导入六种类型；数值支持十进制、科学计数法及读取时的 px 后缀，省略的几何属性默认为 0。画布省略宽高时分别采用 viewBox 尺寸，否则采用工程默认 800×600；根 svg 不计入元素数、不作为可编辑图形，但可保留并预留其 id。
+- 增加封装的 SvgPresentation 保存导入展示属性：transform、字体、对齐、透明度、线型、显示属性、xml:space、preserveAspectRatio 和 data-*；根部的 fill/stroke 等也保留。白名单外内容明确拒绝，不无声丢弃。SVG 版本声明允许读取，写出时统一使用默认 SVG 命名空间和现有格式。
+- 保留任意有效四数字 viewBox；canvas 改尺寸时按现有语义重置为 0 0 新宽 新高。导入 transform 原样保存，不烘焙为几何坐标；move/scale 编辑局部几何坐标。结构重挂载不补偿原父级变换；解组会移除原组上的样式和变换，这一边界不宣称为保留屏幕外观的转换工具。
+- 导入展示属性随 clone 复制，撤销重做不会丢失。CLI set 白名单保持课程规定，不因导入支持 font-size/transform 而允许 set 修改这些属性。data-kind=box 在未安装插件时保留标记并作为普通 g 读入；create box 仍拒绝。
+- 明确不支持 path/use 等其他类型、tspan 等嵌套文字、CSS style、百分比和非 px 长度、DOCTYPE。此范围覆盖本阶段六种内置图形和课程例子，不宣称通用 SVG 全标准兼容。
+- 验证：npm test 累计 58 组通过，npm run typecheck 通过。新增覆盖六类型读入、后置 id 冲突、根 id、中文与 CDATA、空文字、前缀命名空间、px、变换与 viewBox 保留、21 类非法输入、六份已生成样例逐字往返、读取的原子性和历史屏障、中文路径与默认保存。
+- 回放 examples/read.txt：自动补 rect1/g1/text1，移动矩形、撤销重做、修改标题后保存 imported.svg；再次 read 不再补 id。浏览器验收确认字体与嵌套变换保留，Read & edit 和 SVG 正常显示。脚本中两次 read 后的 undo 报错是刻意检查历史屏障。
+- 命令总表的功能入口均已实现；仍需最终按需求逐项验收和文档一致性整理，不在本阶段提前打 final 标签。
+
 ## 一致性自查
 
-- 当前实际目录与目标架构的四个模块一致；infrastructure 已实现 SVG 写出和文件保存，读取待实现。
+- 当前实际目录与目标架构的四个模块一致；infrastructure 已实现 XML 解析、SVG 读写与磁盘保存。
 - 抽样检查新增 import：Cli 仅依赖应用层分发器，application 依赖 domain，domain 只依赖本层；未出现反向业务依赖。新增 SvgFileStore 依赖 application 的 DocumentStore 接口与 domain，具体实现由 main 注入；保存命令不依赖 node:fs。Shape.describe 是无 IO 的领域描述，树形连接符由 TreeCommand 负责。
 - 后续每阶段复核新增依赖并记录架构修订。
 

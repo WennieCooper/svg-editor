@@ -62,6 +62,7 @@ Get-Content -Encoding UTF8 examples/shapes.txt | npm run cli
 - front <id> / back <id>：在同级范围内移至视觉最前/最后；SVG 列表中 front 位于末尾、back 位于开头。
 - tree [id]：显示全部图形或指定图形。
 - show <id>：显示父节点、几何及样式属性和文本内容。
+- read <file.svg>：读取 SVG，缺 id 自动补全并警告，成功后设置默认保存路径。
 - save [file.svg]：首次必须给路径，成功后可省略并复用路径；init 成功后清空旧路径。已有文件会被替换，父目录须存在。
 - undo / redo：撤销或重做一条编辑，包含完整分组、解组、删除与图层调整。
 - help：查看语法。
@@ -138,9 +139,40 @@ tree/show/help 和 canvas 无参数查询不影响历史。失败操作不进入
 完整示例见 examples/history.txt，可用 Get-Content -Encoding UTF8 examples/history.txt | npm run cli 回放。
 脚本中的一次 save 后 undo 报错是刻意验证屏障；导出 history.svg 的时点早于脚本最后的文字修改。
 
-## 尚未完成
+## SVG 读取与往返体验
 
-SVG 读取（read）、外部 SVG 缺 id 补全与读取后的历史屏障。
-init、save 与 canvas 修改尺寸后的历史屏障已实现；read 将在读取阶段接入。
+```text
+read examples/import-source.svg
+tree
+show rect1
+move rect1 10 0
+undo
+redo
+set caption text "Read & edit"
+save demo.svg
+read demo.svg
+tree
+```
+
+首次读取源文件会为无名图形补 id 并打印 warning；保存后再读回不会重复补 id。
+read 成功后无需 init，且 save 无参数会覆盖读入的文件；如需保留源文件，先给 save 指定新路径。
+read 后 undo/redo 受历史屏障限制，新的成功编辑后才解禁。
+
+完整回放：Get-Content -Encoding UTF8 examples/read.txt | npm run cli。
+[导入源文件](examples/import-source.svg)与[编辑后保存的文件](examples/imported.svg)可直接拖进浏览器比较。
+
+### 导入范围
+
+- 支持 rect、circle、ellipse、line、text、g、嵌套容器、XML 实体和 CDATA。
+- 支持数值和 px 几何长度；缺省几何值为 0。宽高缺省时用 viewBox 对应尺寸，否则用 800×600。
+- 保留 viewBox、transform、字体、对齐、透明度、线型、data-* 等展示属性。导入的变换不展开，编辑局部坐标。
+- canvas 改尺寸会把 viewBox 重置为 0 0 新宽 新高；解组或重新归属不补偿父级变换。
+- 不支持 path/use、tspan、CSS style、百分比或其他单位、DOCTYPE；遇到不支持或无效输入会拒绝读取，保留当前文档和历史。
+- set 仍严格使用作业白名单；导入展示属性可保留，但不能通过 set 任意修改。
+- 根 svg 的 id 可保留并参与冲突检查，但根 svg 不作为命令可寻址图形。
+
+## 当前完成情况
+
+命令总表的功能入口均已实现，包括 read、自动补 id 和全部历史屏障。仍需最终需求验收与提交文档整理；box 和动态插件系统不属于本阶段范围。
 
 架构与过程记录见 [doc/README.md](doc/README.md)。

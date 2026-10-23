@@ -1,8 +1,10 @@
+import { SvgPresentation } from "../SvgPresentation.js";
 import { Geometry } from "../Geometry.js";
 import { NumberValue } from "../NumberValue.js";
 
 export abstract class Shape {
   private readonly styles = new Map<string, string>();
+  private readonly presentation = new SvgPresentation();
   private readonly xNames: readonly string[];
   private readonly yNames: readonly string[];
 
@@ -26,7 +28,15 @@ export abstract class Shape {
   abstract describe(): string;
 
   getAttributes(): Readonly<Record<string, string>> {
-    return { id: this.id, ...this.geometry.attributes(), ...Object.fromEntries(this.styles) };
+    return { id: this.id, ...this.geometry.attributes(), ...this.presentation.attributes(), ...Object.fromEntries(this.styles) };
+  }
+
+  importAttribute(name: string, value: string): void {
+    if (name === "fill" || name === "stroke" || name === "stroke-width") {
+      this.setAttribute(name, name === "stroke-width" ? value.trim().replace(/px$/, "") : value);
+    } else {
+      this.presentation.set(name, value);
+    }
   }
 
   getTextContent(): string | undefined { return undefined; }
@@ -65,6 +75,7 @@ export abstract class Shape {
 
   protected copyStylesTo<T extends Shape>(copy: T): T {
     for (const [name, value] of this.styles) copy.styles.set(name, value);
+    this.presentation.copyTo(copy.presentation);
     return copy;
   }
 

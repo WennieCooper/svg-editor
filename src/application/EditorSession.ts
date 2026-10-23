@@ -35,6 +35,15 @@ export class EditorSession {
     return this.document;
   }
 
+  read(store: DocumentStore, filePath: string): readonly string[] {
+    const result = store.read(filePath);
+    // No state is replaced until file parsing, validation and id assignment all succeed.
+    this.document = result.getDocument();
+    this.filePath = filePath;
+    this.history.block();
+    return result.getWarnings();
+  }
+
   save(store: DocumentStore, filePath?: string): string {
     const document = this.getDocument();
     const target = filePath ?? this.filePath;

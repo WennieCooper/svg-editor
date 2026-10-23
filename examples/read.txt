@@ -1,0 +1,13 @@
+# Import missing ids and retain transforms and typography.
+read examples/import-source.svg
+tree
+show rect1
+undo
+move rect1 10 0
+undo
+redo
+set caption text "Read & edit"
+save examples/imported.svg
+read examples/imported.svg
+tree
+undo

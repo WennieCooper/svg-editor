@@ -28,11 +28,12 @@ export class HelpCommand implements Command {
       "  back <id>     Send to background within siblings",
       "  tree [id]",
       "  show <id>",
+      "  read <file.svg>",
       "  save [file.svg]",
       "  undo",
       "  redo",
       "  help",
-      "SVG reading is not implemented yet. Successful init/save/canvas resize block undo/redo until the next edit.",
+      "Successful init/read/save/canvas resize block undo/redo until the next edit.",
     ].join("\n");
   }
 }
