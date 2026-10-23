@@ -1,0 +1,6 @@
+# Run these commands in npm run cli, then open examples/rectangles.svg.
+init 400 200
+create rect r1 30 40 100 60 red
+create rect r2 160 40 80 60 #4a90d9
+tree
+save examples/rectangles.svg

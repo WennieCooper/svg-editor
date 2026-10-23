@@ -12,4 +12,6 @@ export abstract class Shape {
   abstract getType(): string;
 
   abstract describe(): string;
+
+  abstract getAttributes(): Readonly<Record<string, string>>;
 }

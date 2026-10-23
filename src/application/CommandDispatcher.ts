@@ -1,3 +1,5 @@
+import type { DocumentStore } from "./DocumentStore.js";
+import { SaveCommand } from "./commands/SaveCommand.js";
 import type { Command } from "./commands/Command.js";
 import { CreateCommand } from "./commands/CreateCommand.js";
 import { HelpCommand } from "./commands/HelpCommand.js";
@@ -10,6 +12,7 @@ export class CommandDispatcher {
   constructor(
     private readonly session: EditorSession,
     private readonly factory: ShapeFactory,
+    private readonly store: DocumentStore,
   ) {}
 
   execute(tokens: readonly string[]): string {
@@ -29,6 +32,8 @@ export class CommandDispatcher {
         return new InitCommand(this.session, args);
       case "create":
         return new CreateCommand(this.session, this.factory, args);
+      case "save":
+        return new SaveCommand(this.session, this.store, args);
       case "tree":
         return new TreeCommand(this.session, args);
       default:

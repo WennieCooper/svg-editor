@@ -37,7 +37,7 @@ test("domain enforces dimensions, unique case-sensitive ids and defensive child 
 
 test("commands create and inspect a document while failed commands preserve it", () => {
   const session = new EditorSession();
-  const dispatcher = new CommandDispatcher(session, new ShapeFactory());
+  const dispatcher = new CommandDispatcher(session, new ShapeFactory(), { save() { throw new Error("unused store"); } });
   const tokenizer = new Tokenizer();
   const run = (line) => dispatcher.execute(tokenizer.tokenize(line));
   assert.match(run("help"), /create rect/);

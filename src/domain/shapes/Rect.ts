@@ -25,6 +25,20 @@ export class Rect extends Shape {
     return "rect";
   }
 
+  getAttributes(): Readonly<Record<string, string>> {
+    const attributes: Record<string, string> = {
+      id: this.getId(),
+      x: String(this.x),
+      y: String(this.y),
+      width: String(this.width),
+      height: String(this.height),
+    };
+    if (this.fill !== undefined) {
+      attributes.fill = this.fill;
+    }
+    return attributes;
+  }
+
   describe(): string {
     const style = this.fill === undefined ? "" : ` fill=${this.fill}`;
     return `rect#${this.getId()}  x=${this.x} y=${this.y} w=${this.width} h=${this.height}${style}`;

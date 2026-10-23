@@ -11,8 +11,9 @@ export class HelpCommand implements Command {
       "  init [w] [h]                           Create a canvas (default 800x600)",
       "  create rect <id> <x> <y> <w> <h> [fill]  Create a rectangle",
       "  tree [id]                              Show the document or one shape",
+      "  save [file.svg]                        Save SVG; reuse last successful path",
       "  help                                   Show this help",
-      "Other shapes, containers, editing, history and SVG IO are not implemented yet.",
+      "Other shapes, containers, editing, history and SVG reading are not implemented yet.",
     ].join("\n");
   }
 }

@@ -4,7 +4,7 @@
 
 ### 模块划分
 
-以下是目标结构；当前已建立 cli、application、domain 和启动入口，infrastructure 随文件读写功能添加。
+当前已建立 cli、application、domain、infrastructure 和启动入口。模块目录齐备，但功能仍按阶段实现。
 
 | 模块 | 职责 |
 | --- | --- |
@@ -35,7 +35,7 @@ MAIN --> INFRA
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
+- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
 - Composite（计划）：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作。
 - Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前仅注册 rect。
 - Memento（待验证）：优先评估快照式撤销，用空间换取结构操作的恢复可靠性。
@@ -89,10 +89,22 @@ MAIN --> INFRA
 - 验证：npm run typecheck、npm test 全部通过。4 组测试覆盖分词、领域约束、命令状态和真实 CLI；命令测试逐项确认 15 类失败输入不改变文档。git diff --check 通过。
 - Git 只在受限环境报告用户身份与仓库所有者不同，切换正常用户环境完成检查，未修改全局 safe.directory 配置。
 
+### 2026-10-23：SVG 保存与可视化验收
+
+- 用户希望看到画布，因而调整实现顺序：先完成 save，将内存模型转换为可在浏览器中查看的 SVG，再扩展其他图形和编辑操作。第二次功能提交已完成，本阶段开始时工作区干净。
+- 新增 application/DocumentStore 存储接口，由 infrastructure/SvgFileStore 实现，main 注入分发器；应用层不导入 node:fs 或具体存储类。
+- 新增 SaveCommand、SvgWriter、XmlEncoder。Shape.getAttributes 返回属性快照，Rect 多态提供自己的几何属性；修改返回的快照不影响内部状态。文件格式化、XML 转义与磁盘 IO 均在 infrastructure。
+- 省略 fill 时不写出该属性，遵循 SVG 默认。XML 属性中的特殊字符和空白进行转义，非法 XML 1.0 字符拒绝输出。
+- 序列化先完成，再将内容写入目标目录中的唯一临时文件，写入和关闭成功后用 rename 替换目标；失败清理临时文件并输出 cannot write file，避免直接截断旧文件。此策略不宣称提供断电恢复保证。
+- 文件路径只有保存成功后才更新。init 成功会清空路径，失败不清空。当前尚无 read，因此无参数 save 可复用最近一次成功保存的路径；后续 read 成功时也需设置默认路径。
+- 使用 examples/rectangles.txt 通过真实 CLI 生成 examples/rectangles.svg。浏览器截图确认左侧红色矩形位于 (30,40)、尺寸 100×60，右侧蓝色矩形位于 (160,40)、尺寸 80×60，符合命令输入。临时 HTTP 服务仅用于验收，日常直接打开 SVG 文件即可。
+- 验证通过：npm run typecheck、npm test，累计 8 组测试；新增覆盖 XML 输出、缺省 fill、属性快照隔离、中文及带空格路径、覆盖旧文件、非法 XML 不破坏旧文件、临时文件清理、保存失败后默认路径及文档不变、init 路径重置与真实 CLI 保存。
+- 当前未实现 read、其他图形、容器、编辑和撤销重做。IO 后禁止撤销的规则将在历史模块实现，不能把当前 save 视为 Phase 1 全部完成。
+
 ## 一致性自查
 
-- 当前实际目录为目标架构的子集：cli、application、domain 已建立，infrastructure 尚未实现。
-- 抽样检查新增 import：Cli 仅依赖应用层分发器，application 依赖 domain，domain 只依赖本层；未出现反向业务依赖。Shape.describe 是无 IO 的领域描述，树形连接符由 TreeCommand 负责。
+- 当前实际目录与目标架构的四个模块一致；infrastructure 已实现 SVG 写出和文件保存，读取待实现。
+- 抽样检查新增 import：Cli 仅依赖应用层分发器，application 依赖 domain，domain 只依赖本层；未出现反向业务依赖。新增 SvgFileStore 依赖 application 的 DocumentStore 接口与 domain，具体实现由 main 注入；保存命令不依赖 node:fs。Shape.describe 是无 IO 的领域描述，树形连接符由 TreeCommand 负责。
 - 后续每阶段复核新增依赖并记录架构修订。
 
 ## 质量保证手段
