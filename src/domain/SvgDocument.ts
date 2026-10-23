@@ -10,6 +10,12 @@ export class SvgDocument {
     this.validateDimensions(width, height);
   }
 
+  clone(): SvgDocument {
+    const copy = new SvgDocument(this.width, this.height);
+    for (const shape of this.roots) copy.add(shape.clone());
+    return copy;
+  }
+
   getWidth(): number { return this.width; }
   getHeight(): number { return this.height; }
   getShapes(): readonly Shape[] { return [...this.roots]; }

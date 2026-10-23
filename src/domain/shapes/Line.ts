@@ -7,6 +7,11 @@ export class Line extends Shape {
     if (stroke !== undefined) this.setAttribute("stroke", stroke);
   }
 
+  clone(): Line {
+    const a = this.getAttributes();
+    return this.copyStylesTo(new Line(this.getId(), Number(a.x1), Number(a.y1), Number(a.x2), Number(a.y2)));
+  }
+
   getType(): string { return "line"; }
 
   describe(): string {

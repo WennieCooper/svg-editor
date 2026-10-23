@@ -1,0 +1,19 @@
+# Undo/redo restore a nested node, its contents, and sibling order.
+init 400 240
+create g scene
+create g node in scene
+create rect card 30 40 120 60 orange in node
+create text label 50 75 "Hello" in node
+move node 100 50
+undo
+redo
+delete node
+undo
+tree
+save examples/history.svg
+# Saving blocks undo; the next successful edit unlocks it.
+undo
+set label text "Hello again"
+undo
+redo
+tree

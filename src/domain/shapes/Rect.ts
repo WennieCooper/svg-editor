@@ -7,6 +7,11 @@ export class Rect extends Shape {
     if (fill !== undefined) this.setAttribute("fill", fill);
   }
 
+  clone(): Rect {
+    const a = this.getAttributes();
+    return this.copyStylesTo(new Rect(this.getId(), Number(a.x), Number(a.y), Number(a.width), Number(a.height)));
+  }
+
   getType(): string { return "rect"; }
 
   describe(): string {

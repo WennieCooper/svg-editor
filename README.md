@@ -63,6 +63,7 @@ Get-Content -Encoding UTF8 examples/shapes.txt | npm run cli
 - tree [id]：显示全部图形或指定图形。
 - show <id>：显示父节点、几何及样式属性和文本内容。
 - save [file.svg]：首次必须给路径，成功后可省略并复用路径；init 成功后清空旧路径。已有文件会被替换，父目录须存在。
+- undo / redo：撤销或重做一条编辑，包含完整分组、解组、删除与图层调整。
 - help：查看语法。
 
 画布尺寸为正有限数；几何尺寸及半径非负；坐标允许负数。
@@ -110,9 +111,36 @@ tree
 before.svg 中蓝色在上面，after.svg 中红色在上面。画布尺寸变化不会缩放已有图形。
 完整回放：Get-Content -Encoding UTF8 examples/layers.txt | npm run cli。
 
+## 撤销重做体验
+
+```text
+init 400 240
+create g node
+create rect card 30 40 120 60 orange in node
+create text label 50 75 "Hello" in node
+move node 100 50
+undo
+redo
+delete node
+undo
+tree
+save demo.svg
+undo
+set label text "Hello again"
+undo
+redo
+```
+
+save 后的 undo 应报 error: undo not allowed after io command，这是作业要求。
+新的成功编辑会解禁；撤销后执行新的成功编辑会清空 redo。
+tree/show/help 和 canvas 无参数查询不影响历史。失败操作不进入历史，也不会清空 redo。
+
+完整示例见 examples/history.txt，可用 Get-Content -Encoding UTF8 examples/history.txt | npm run cli 回放。
+脚本中的一次 save 后 undo 报错是刻意验证屏障；导出 history.svg 的时点早于脚本最后的文字修改。
+
 ## 尚未完成
 
-撤销重做、SVG 读取。
-init、save 与 canvas 修改尺寸对历史的屏障行为将在历史模块阶段实现。
+SVG 读取（read）、外部 SVG 缺 id 补全与读取后的历史屏障。
+init、save 与 canvas 修改尺寸后的历史屏障已实现；read 将在读取阶段接入。
 
 架构与过程记录见 [doc/README.md](doc/README.md)。

@@ -21,6 +21,7 @@ export abstract class Shape {
 
   getId(): string { return this.id; }
 
+  abstract clone(): Shape;
   abstract getType(): string;
   abstract describe(): string;
 
@@ -60,6 +61,11 @@ export abstract class Shape {
     } else {
       throw new Error(`unknown attribute: ${attribute}`);
     }
+  }
+
+  protected copyStylesTo<T extends Shape>(copy: T): T {
+    for (const [name, value] of this.styles) copy.styles.set(name, value);
+    return copy;
   }
 
   protected styleDescription(): string {

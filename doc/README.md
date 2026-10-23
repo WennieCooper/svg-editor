@@ -35,10 +35,10 @@ MAIN --> INFRA
 
 ### 设计模式的选择
 
-- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand、DeleteCommand、FrontCommand、BackCommand、CanvasCommand，由 CommandDispatcher 统一创建并执行；可撤销协议和历史管理尚未实现。
+- Command：将用户操作封装为命令对象。当前已有 HelpCommand、InitCommand、CreateCommand、TreeCommand、SaveCommand、MoveCommand、ScaleCommand、SetCommand、ShowCommand、GroupCommand、UngroupCommand、AddToCommand、DeleteCommand、FrontCommand、BackCommand、CanvasCommand，由 CommandDispatcher 统一创建并执行；编辑命令包装为 UndoableCommand，CommandHistory 管理撤销重做。
 - Composite：Shape 抽象类统一图形操作，Group 管理子图形并递归委派操作；变换先构造全部子孙的有效计划，再整体应用。
 - Factory：ShapeFactory 集中完成类型名到图形类的创建映射，当前注册 rect、circle、ellipse、line、text、g 六种内置类型。
-- Memento（待验证）：优先评估快照式撤销，用空间换取结构操作的恢复可靠性。
+- Memento：DocumentSnapshot 封装私有文档副本，恢复时返回新的深拷贝；UndoableCommand 保存前后快照，以空间换取可靠恢复。各图形多态 clone，避免按类型还原对象。
 
 仅允许在命令分发与图形工厂中按名字分派。这两处为显式待重构点；当前已集中到 CommandDispatcher 与 ShapeFactory，其他业务代码不按图形类型名分派。
 
@@ -137,6 +137,20 @@ MAIN --> INFRA
 - 质量验证：npm test 累计 27 组检查通过，npm run typecheck 通过。新增覆盖子树删除、索引清理、id 复用、容器和叶子排序、同级隔离、重复置前置后、画布内容及路径保留、无文档和 15 类非法输入，以及真实 CLI。
 - 回放 examples/layers.txt，生成 layers-before.svg 与 layers-after.svg；XML 检查元素顺序从 red/blue 变为 blue/red。浏览器确认 front red 后红色覆盖蓝色，删除临时容器后导出文件只含两个矩形。
 - 尚未实现 undo/redo 与 read。canvas 查询将不进入历史；canvas 修改尺寸将与 init/save/read 一起形成历史屏障，这部分留给下一阶段。
+
+### 2026-10-23：撤销重做与历史屏障
+
+- 第六次提交已完成，本阶段开始时工作区干净。新增 CommandHistory、UndoableCommand、UndoCommand、RedoCommand 和领域 DocumentSnapshot。
+- Command 模式进一步落地：分发器把编辑命令包装为 UndoableCommand，保留统一 execute 接口；可撤销命令具备 undo/redo 行为，历史栈保存命令对象。无需在每个具体编辑命令重复历史逻辑。
+- Memento 决策落实：每条成功编辑保存前后文档快照。Shape.clone 由各具体类型多态实现，Group 递归复制子图形，SvgDocument.clone 重建全局 id 和父级索引。没有 JSON 数据袋或新增 switch(tag)；快照不会与当前文档共享可变图形。
+- 一条编辑命令一个单元，包含整次 group、ungroup、delete、addto、front/back。undo/redo 恢复整个对象图，精确保留缺省样式、文字内容、父级、兄弟顺序和几何值；不使用反向算术避免浮点误差，不在 redo 时重新执行原命令。
+- 失败编辑恢复执行前快照，并保留 undo/redo 栈和禁止标志；专项注入“先删除子树再抛错”的失败证明了防御性回滚。
+- 成功 init、save、canvas 修改尺寸清空两个历史栈并禁止 undo/redo，报 error: undo not allowed after io command；下一次成功编辑才解禁。失败编辑、失败 IO 不会解禁或清空 redo。canvas 查询及 tree/show/help 不进入历史。
+- 历史恢复只替换领域文档，不改变最近成功 IO 路径。历史由 EditorSession 持有，相关命令都使用同一历史实例。read 的成功加载屏障将在读取阶段接入。
+- 取舍：整文档快照适合当前教学规模，便于保证结构恢复正确性；每条记录保存前后图，内存随文档大小和历史长度增长，目前不设历史容量上限。未来大量图形/长会话可改增量快照或限制历史条数，当前不提前实现。
+- 验证：npm test 累计 48 组通过，npm run typecheck、git diff --check 通过。新增 12 类编辑往返、六类多态快照隔离、失败操作不清 redo、三个 IO 屏障、重做不重复执行、部分失败回滚和真实 CLI 测试；连续八步撤销重做验证了子树删除后复用同名 id 的完整恢复。
+- 回放 examples/history.txt：删除节点后 undo 恢复矩形和文字；保存后 undo 按约定报错；新的文字编辑重新解禁，随后 undo/redo 正常。examples/history.svg 为保存时的恢复结果（标签 Hello），脚本末尾的 Hello again 只在内存中，未再次保存。
+- 尚未实现 read；下一阶段完成 SVG 读取、缺 id 补全和读写往返后再做最终需求验收。
 
 ## 一致性自查
 

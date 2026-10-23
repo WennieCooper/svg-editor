@@ -8,6 +8,12 @@ export class Group extends Shape {
     super(id, new Geometry({}, []), [], []);
   }
 
+  clone(): Group {
+    const copy = this.copyStylesTo(new Group(this.getId()));
+    for (const child of this.children) copy.insert(child.clone());
+    return copy;
+  }
+
   getType(): string { return "g"; }
   override isContainer(): boolean { return true; }
   override getChildren(): readonly Shape[] { return [...this.children]; }

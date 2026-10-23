@@ -7,6 +7,11 @@ export class Ellipse extends Shape {
     if (fill !== undefined) this.setAttribute("fill", fill);
   }
 
+  clone(): Ellipse {
+    const a = this.getAttributes();
+    return this.copyStylesTo(new Ellipse(this.getId(), Number(a.cx), Number(a.cy), Number(a.rx), Number(a.ry)));
+  }
+
   getType(): string { return "ellipse"; }
 
   describe(): string {

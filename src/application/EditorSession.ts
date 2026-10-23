@@ -1,7 +1,9 @@
+import { CommandHistory } from "./CommandHistory.js";
 import { SvgDocument } from "../domain/SvgDocument.js";
 import type { DocumentStore } from "./DocumentStore.js";
 
 export class EditorSession {
+  private readonly history = new CommandHistory();
   private document?: SvgDocument;
   private filePath?: string;
 
@@ -10,7 +12,20 @@ export class EditorSession {
     const document = new SvgDocument(width, height);
     this.document = document;
     this.filePath = undefined;
+    this.history.block();
     return document;
+  }
+
+  getHistory(): CommandHistory { return this.history; }
+
+  restoreDocument(document: SvgDocument): void {
+    // History restores model state only, preserving the successful IO path.
+    this.document = document;
+  }
+
+  resize(width: number, height: number): void {
+    this.getDocument().resize(width, height);
+    this.history.block();
   }
 
   getDocument(): SvgDocument {
@@ -29,6 +44,7 @@ export class EditorSession {
     store.save(document, target);
     // Remember a new path only after the write succeeds.
     this.filePath = target;
+    this.history.block();
     return target;
   }
 }

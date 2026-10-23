@@ -6,6 +6,11 @@ export class Text extends Shape {
     super(id, new Geometry({ x, y }, []), ["x"], ["y"]);
   }
 
+  clone(): Text {
+    const a = this.getAttributes();
+    return this.copyStylesTo(new Text(this.getId(), Number(a.x), Number(a.y), this.content));
+  }
+
   getType(): string { return "text"; }
 
   override getTextContent(): string { return this.content; }

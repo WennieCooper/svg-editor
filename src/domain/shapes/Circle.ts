@@ -7,6 +7,11 @@ export class Circle extends Shape {
     if (fill !== undefined) this.setAttribute("fill", fill);
   }
 
+  clone(): Circle {
+    const a = this.getAttributes();
+    return this.copyStylesTo(new Circle(this.getId(), Number(a.cx), Number(a.cy), Number(a.r)));
+  }
+
   getType(): string { return "circle"; }
 
   describe(): string {

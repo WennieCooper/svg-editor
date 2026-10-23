@@ -29,8 +29,10 @@ export class HelpCommand implements Command {
       "  tree [id]",
       "  show <id>",
       "  save [file.svg]",
+      "  undo",
+      "  redo",
       "  help",
-      "Undo/redo and SVG reading are not implemented yet.",
+      "SVG reading is not implemented yet. Successful init/save/canvas resize block undo/redo until the next edit.",
     ].join("\n");
   }
 }
