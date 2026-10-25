@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { test } from "node:test";
 import { CommandDispatcher } from "../dist/application/CommandDispatcher.js";
+import { ReadResult } from "../dist/application/ReadResult.js";
+import { SvgDocument } from "../dist/domain/SvgDocument.js";
 import { EditorSession } from "../dist/application/EditorSession.js";
 import { ShapeFactory } from "../dist/application/ShapeFactory.js";
 import { Tokenizer } from "../dist/cli/Tokenizer.js";
@@ -11,6 +13,7 @@ class Harness {
   session = new EditorSession();
   saved = "";
   dispatcher = new CommandDispatcher(this.session, new ShapeFactory(), {
+    read: () => new ReadResult(new SvgDocument(400, 200), []),
     save: (document) => { this.saved = new SvgWriter().serialize(document); },
   });
   tokenizer = new Tokenizer();
@@ -81,7 +84,7 @@ test("front/back change only sibling order and SVG painter order, including cont
 
 test("canvas query and resize preserve document identity, shapes, coordinates and save path", () => {
   const h = new Harness();
-  h.run("init 400 200");
+  h.run("read out.svg");
   h.run("create rect r 350 150 100 100 red");
   h.run("save out.svg");
   const document = h.session.getDocument();

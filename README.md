@@ -63,7 +63,7 @@ Get-Content -Encoding UTF8 examples/shapes.txt | npm run cli
 - tree [id]：显示全部图形或指定图形。
 - show <id>：显示父节点、几何及样式属性和文本内容。
 - read <file.svg>：读取 SVG，缺 id 自动补全并警告，成功后设置默认保存路径。
-- save [file.svg]：首次必须给路径，成功后可省略并复用路径；init 成功后清空旧路径。已有文件会被替换，父目录须存在。
+- save [file.svg]：无参数时保存到最近一次成功 read 的路径，显式另存不会改变该路径。init 后未 read 的文档每次都须指定保存路径。已有文件会被替换，父目录须存在。
 - undo / redo：撤销或重做一条编辑，包含完整分组、解组、删除与图层调整。
 - help：查看语法。
 
@@ -155,7 +155,7 @@ tree
 ```
 
 首次读取源文件会为无名图形补 id 并打印 warning；保存后再读回不会重复补 id。
-read 成功后无需 init，且 save 无参数会覆盖读入的文件；如需保留源文件，先给 save 指定新路径。
+read 成功后无需 init，且 save 无参数始终写回最近读入的文件。例如 read a.svg、save b.svg、save 的保存目标依次为 b.svg、a.svg。若要保留源文件，每次保存都应显式指定输出路径；另存不会切换无参数 save 的目标。
 read 后 undo/redo 受历史屏障限制，新的成功编辑后才解禁。
 
 完整回放：Get-Content -Encoding UTF8 examples/read.txt | npm run cli。

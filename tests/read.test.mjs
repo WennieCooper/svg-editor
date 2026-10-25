@@ -224,3 +224,24 @@ test("real CLI emits warnings only for a successful read, saves to imported path
   assert.match(result.stdout, /error: cannot read file: missing.svg/);
   assert.match(readFileSync(join(directory, "中文 input.svg"), "utf8"), /edited &amp; saved/);
 });
+
+test("explicit save does not replace the read path used by the next argumentless save", (t) => {
+  const directory = mkdtempSync(join(tmpdir(), "svg-editor-save-source-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const source = join(directory, "a.svg");
+  const exported = join(directory, "b.svg");
+  writeFileSync(source, '<svg width="100" height="100"><rect id="r" x="0" y="0" width="10" height="10" fill="red"/></svg>');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL("../dist/main.js", import.meta.url))], {
+    cwd: directory,
+    encoding: "utf8",
+    input: ["read a.svg", "set r fill blue", "save b.svg", "set r fill green", "save", ""].join("\n"),
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(result.stdout.match(/saved to [^\n]+/g), [
+    "saved to b.svg (1 elements)", "saved to a.svg (1 elements)",
+  ]);
+  const reader = new SvgReader();
+  assert.equal(reader.parse(readFileSync(source, "utf8")).getDocument().find("r").getAttributes().fill, "green");
+  assert.equal(reader.parse(readFileSync(exported, "utf8")).getDocument().find("r").getAttributes().fill, "blue");
+});

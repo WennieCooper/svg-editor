@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { CommandDispatcher } from "../dist/application/CommandDispatcher.js";
+import { ReadResult } from "../dist/application/ReadResult.js";
 import { EditorSession } from "../dist/application/EditorSession.js";
 import { ShapeFactory } from "../dist/application/ShapeFactory.js";
 import { Tokenizer } from "../dist/cli/Tokenizer.js";
@@ -33,12 +34,20 @@ test("SVG output contains canvas, geometry, ordered elements and escaped attribu
   assert.throws(() => new SvgWriter().serialize(invalid), /invalid XML character/);
 });
 
-test("successful saves remember path; failed saves and failed init leave path and document unchanged", () => {
+test("argumentless save uses only the last successful read path, even after explicit saves", () => {
   const calls = [];
-  const store = { save(document, path) {
-    calls.push(path);
-    if (path === "bad.svg") throw new Error("cannot write file: bad.svg");
-  } };
+  const store = {
+    read(path) {
+      if (path === "missing.svg") throw new Error("cannot read file: missing.svg");
+      const document = new SvgDocument(400, 200);
+      document.add(new Rect("r1", 0, 0, 10, 10));
+      return new ReadResult(document, []);
+    },
+    save(_document, path) {
+      calls.push(path);
+      if (path === "bad.svg") throw new Error("cannot write file: bad.svg");
+    },
+  };
   const session = new EditorSession();
   const dispatcher = new CommandDispatcher(session, new ShapeFactory(), store);
   const tokenizer = new Tokenizer();
@@ -46,20 +55,33 @@ test("successful saves remember path; failed saves and failed init leave path an
   assert.throws(() => run("save a.svg"), /no document/);
   run("init");
   run("create rect r1 0 0 10 10");
-  const before = run("tree");
   assert.throws(() => run("save"), /no file path/);
   assert.throws(() => run('save ""'), /no file path/);
   assert.equal(run('save "中文 demo.svg"'), "saved to 中文 demo.svg (1 elements)");
-  assert.equal(run("save"), "saved to 中文 demo.svg (1 elements)");
+  assert.throws(() => run("save"), /no file path/, "explicit save cannot establish a read path");
+  run("read a.svg");
+  assert.equal(run('save "中文 demo.svg"'), "saved to 中文 demo.svg (1 elements)");
+  assert.equal(run("save"), "saved to a.svg (1 elements)");
+  assert.deepEqual(calls.slice(-2), ["中文 demo.svg", "a.svg"]);
+  const before = run("tree");
   assert.throws(() => run("save bad.svg"), /cannot write file/);
+  assert.throws(() => run("read missing.svg"), /cannot read file/);
   assert.equal(run("tree"), before);
-  assert.equal(run("save"), "saved to 中文 demo.svg (1 elements)");
+  assert.equal(run("save"), "saved to a.svg (1 elements)");
   assert.throws(() => run("init -1 100"), /positive/);
-  assert.equal(run("save"), "saved to 中文 demo.svg (1 elements)");
+  assert.equal(run("save"), "saved to a.svg (1 elements)");
   assert.throws(() => run("save a.svg extra"), /usage/);
+  run("read c.svg");
+  run('save "中文 demo.svg"');
+  assert.equal(run("save"), "saved to c.svg (1 elements)");
   run("init");
   assert.throws(() => run("save"), /no file path/);
-  assert.deepEqual(calls, ["中文 demo.svg", "中文 demo.svg", "bad.svg", "中文 demo.svg", "中文 demo.svg"]);
+  run("save out.svg");
+  assert.throws(() => run("save"), /no file path/);
+  assert.deepEqual(calls, [
+    "中文 demo.svg", "中文 demo.svg", "a.svg", "bad.svg", "a.svg",
+    "a.svg", "中文 demo.svg", "c.svg", "out.svg",
+  ]);
 });
 
 test("disk saves replace successfully and preserve old target on serialization failure", (t) => {
@@ -98,6 +120,7 @@ test("real CLI saves SVG using a quoted path and continues after file IO errors"
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /saved to 中文 demo.svg \(1 elements\)/);
   assert.match(result.stdout, /error: cannot write file: missing\/a.svg/);
+  assert.match(result.stdout, /error: no file path/);
   assert.match(result.stdout, /rect#r1  x=30 y=40/);
   assert.match(readFileSync(join(directory, "中文 demo.svg"), "utf8"), /<rect id="r1"/);
 });
